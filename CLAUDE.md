@@ -60,6 +60,13 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
   - `pages/tickets/index.vue` - Tickets list page (`/tickets`)
   - `pages/tickets/[id].vue` - Ticket detail page (`/tickets/:id`)
   - `pages/realtime.vue` - Realtime page (`/realtime`)
+- `server/api/` - Nitro server routes (auto-registered, no imports needed)
+  - `tickets.get.ts` - GET /api/tickets
+  - `tickets.post.ts` - POST /api/tickets
+  - `tickets/[id].get.ts` - GET /api/tickets/:id
+  - `tickets/[id].put.ts` - PUT /api/tickets/:id
+  - `tickets/[id].patch.ts` - PATCH /api/tickets/:id
+  - `tickets/[id].delete.ts` - DELETE /api/tickets/:id
 - `public/` - Static assets served at root
 - `nuxt.config.ts` - Nuxt configuration
 - `.env.example` - Example environment variables
@@ -68,6 +75,14 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
 ### Environment Variables
 - `MOCKAPI_BASE_URL` - Base URL for MockAPI (server-side only via `runtimeConfig.mockapiBaseUrl`)
 - Copy `.env.example` to `.env` and fill in values before running locally
+
+### Nitro Server Routes (server/api/)
+- All handlers use `useRuntimeConfig(event)` to read `mockapiBaseUrl`
+- Throw `createError({ statusCode: 500 })` if `mockapiBaseUrl` is missing
+- Use `$fetch` to proxy to MockAPI; wrap errors as `createError({ statusCode: 502 })`
+- Read path params with `getRouterParam(event, 'id')`
+- Read request body with `readBody(event)` for POST/PUT/PATCH
+- After adding new server route files, restart the dev server to ensure they are registered
 
 ### Configured Modules
 - **@nuxtjs/tailwindcss** - Tailwind CSS with automatic config detection
