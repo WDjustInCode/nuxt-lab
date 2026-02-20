@@ -55,12 +55,15 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
 ### File Structure Conventions
 - `app/` - Application source code
   - `app.vue` - Root component
-  - `layouts/default.vue` - Default layout with nav bar
+  - `layouts/default.vue` - Default layout with nav bar and `<ToastHost />`
   - `pages/index.vue` - Home page (`/`)
-  - `pages/tickets/index.vue` - Tickets list page (`/tickets`)
-  - `pages/tickets/[id].vue` - Ticket detail page (`/tickets/:id`)
+  - `pages/tickets/index.vue` - Tickets list page (`/tickets`) with full CRUD UI
+  - `pages/tickets/[id].vue` - Ticket detail page (`/tickets/:id`) with Edit/Delete
   - `pages/realtime.vue` - Realtime page (`/realtime`)
-  - `components/TicketTable.vue` - Reusable table component used by tickets list page
+  - `components/TicketTable.vue` - Read-only table (no action columns); used only if no actions needed
+  - `components/TicketForm.vue` - Create/edit form; exports `TicketUpsertPayload` type
+  - `components/ConfirmModal.vue` - Delete confirmation modal (Teleport-based)
+  - `components/ToastHost.vue` - Toast renderer; exports `useToasts()` composable
 - `server/api/` - Nitro server routes (auto-registered, no imports needed)
   - `tickets.get.ts` - GET /api/tickets
   - `tickets.post.ts` - POST /api/tickets
@@ -74,14 +77,35 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
 - `.nuxt/` - Generated files (gitignored, created on dev/build)
 
 ### Ticket Type
-Both `pages/tickets/index.vue` and `pages/tickets/[id].vue` define a local `Ticket` interface inline (no shared types file yet). Fields used across the app:
-- `id`, `ticketNumber`, `title`, `status`, `priority`, `assignee`, `updatedAt` (list page)
-- `isArchived`, `estimatedHours`, `tags` (string[] | string), `description`, `createdAt` (detail page)
+All pages and form components define a local `Ticket` interface inline (no shared types file yet). Full field set:
+- `id`, `ticketNumber`, `title`, `status`, `priority`, `assignee`, `updatedAt` (common)
+- `isArchived` (boolean), `estimatedHours` (number), `tags` (string[] | string), `description`, `createdAt` (detail/form)
 - Dates from MockAPI are Unix timestamps (seconds); format with `new Date(Number(val) * 1000)`
 
+`TicketUpsertPayload` is exported from `components/TicketForm.vue`:
+- Fields: `ticketNumber`, `title`, `description`, `status`, `priority`, `assignee`, `isArchived`, `estimatedHours` (number | null), `tags` (string[])
+- Import with: `import type { TicketUpsertPayload } from '~/components/TicketForm.vue'`
+
+### Toast System
+`useToasts()` is exported from `components/ToastHost.vue` (NOT from `composables/`). Import explicitly:
+```ts
+import { useToasts } from '~/components/ToastHost.vue'
+```
+- Uses a module-level singleton ref — all callers share the same toast queue
+- `<ToastHost />` is rendered once in `layouts/default.vue`
+- API: `toast.success(msg)`, `toast.error(msg)` — auto-dismiss after 3s
+
 ### Pages: Tickets
-- **List** (`/tickets`): fetches `/api/tickets`, shows loading skeleton, error+retry, empty state, or `<TicketTable>`
-- **Detail** (`/tickets/:id`): fetches `/api/tickets/:id` reactively via `useFetch(() => \`/api/tickets/${id.value}\`)`; shows loading skeleton, error+retry, or full ticket fields with tag chips and formatted dates
+- **List** (`/tickets`): fetches `/api/tickets`, shows loading skeleton, error+retry, empty state, or inline table with Edit/Delete actions per row and a "New Ticket" button. Does NOT use `<TicketTable>` (that component has no action columns).
+- **Detail** (`/tickets/:id`): fetches `/api/tickets/:id` reactively via `useFetch(() => \`/api/tickets/${id.value}\`)`; shows loading skeleton, error+retry, or full ticket fields with tag chips, formatted dates, and Edit/Delete buttons.
+
+### CRUD Flows (tickets)
+- **Create**: POST `/api/tickets` with `TicketUpsertPayload`
+- **Update**: PATCH `/api/tickets/:id` with `TicketUpsertPayload` (do not send `id` or `createdAt`)
+- **Delete**: DELETE `/api/tickets/:id`
+- All flows: show toast on success/error, call `refresh()` on success
+- After delete on detail page: `router.push('/tickets')`
+- Modal overlay uses `v-if` + fixed overlay div; `ConfirmModal` and `ToastHost` use `<Teleport to="body">`
 
 ### Environment Variables
 - `MOCKAPI_BASE_URL` - Base URL for MockAPI (server-side only via `runtimeConfig.mockapiBaseUrl`)

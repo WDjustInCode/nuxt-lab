@@ -6,5 +6,6 @@
       <NuxtLink to="/realtime" class="hover:text-gray-300">Realtime</NuxtLink>
     </nav>
     <slot />
+    <ToastHost />
   </div>
 </template>
