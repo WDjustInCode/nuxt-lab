@@ -60,6 +60,7 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
   - `pages/tickets/index.vue` - Tickets list page (`/tickets`)
   - `pages/tickets/[id].vue` - Ticket detail page (`/tickets/:id`)
   - `pages/realtime.vue` - Realtime page (`/realtime`)
+  - `components/TicketTable.vue` - Reusable table component used by tickets list page
 - `server/api/` - Nitro server routes (auto-registered, no imports needed)
   - `tickets.get.ts` - GET /api/tickets
   - `tickets.post.ts` - POST /api/tickets
@@ -71,6 +72,16 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
 - `nuxt.config.ts` - Nuxt configuration
 - `.env.example` - Example environment variables
 - `.nuxt/` - Generated files (gitignored, created on dev/build)
+
+### Ticket Type
+Both `pages/tickets/index.vue` and `pages/tickets/[id].vue` define a local `Ticket` interface inline (no shared types file yet). Fields used across the app:
+- `id`, `ticketNumber`, `title`, `status`, `priority`, `assignee`, `updatedAt` (list page)
+- `isArchived`, `estimatedHours`, `tags` (string[] | string), `description`, `createdAt` (detail page)
+- Dates from MockAPI are Unix timestamps (seconds); format with `new Date(Number(val) * 1000)`
+
+### Pages: Tickets
+- **List** (`/tickets`): fetches `/api/tickets`, shows loading skeleton, error+retry, empty state, or `<TicketTable>`
+- **Detail** (`/tickets/:id`): fetches `/api/tickets/:id` reactively via `useFetch(() => \`/api/tickets/${id.value}\`)`; shows loading skeleton, error+retry, or full ticket fields with tag chips and formatted dates
 
 ### Environment Variables
 - `MOCKAPI_BASE_URL` - Base URL for MockAPI (server-side only via `runtimeConfig.mockapiBaseUrl`)
