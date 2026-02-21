@@ -1,42 +1,29 @@
 <script setup lang="ts">
-interface Ticket {
-  id: string
-  ticketNumber: string
-  title: string
-  description: string
-  status: string
-  priority: string
-  assignee: string
-  isArchived: boolean
-  estimatedHours: number
-  tags: string[] | string
-}
+// Reusable create/edit form for tickets.
+// Used by: pages/tickets/index.vue (create + edit) and pages/tickets/[id].vue (edit only).
+// The mode prop ('create' | 'edit') controls the heading and submit button label.
+// When initialTicket is provided, the form pre-fills for editing; absent = create mode.
 
-export interface TicketUpsertPayload {
-  ticketNumber: string
-  title: string
-  description: string
-  status: string
-  priority: string
-  assignee: string
-  isArchived: boolean
-  estimatedHours: number | null
-  tags: string[]
-}
+import type { Ticket, TicketUpsertPayload } from '~/types/ticket'
 
 const props = withDefaults(defineProps<{
-  mode: 'create' | 'edit'
+  mode: 'create' | 'edit' 
   initialTicket?: Ticket
-  isSubmitting?: boolean
+  isSubmitting?: boolean  // Passed in from the parent while an API call is in flight; disables buttons.
 }>(), {
   isSubmitting: false,
 })
 
+// This component does NOT make API calls itself.
+// 'submit' fires with the validated payload — the parent decides what to do with it (POST or PATCH).
+// 'cancel' fires when the user cancels — the parent controls modal visibility.
 const emit = defineEmits<{
   submit: [payload: TicketUpsertPayload]
   cancel: []
 }>()
 
+// Local refs mirror the form fields. Initialized from initialTicket props for edit mode,
+// or with sensible defaults for create mode.
 const ticketNumber = ref(props.initialTicket?.ticketNumber ?? '')
 const title = ref(props.initialTicket?.title ?? '')
 const description = ref(props.initialTicket?.description ?? '')
@@ -47,6 +34,10 @@ const isArchived = ref(props.initialTicket?.isArchived ?? false)
 const estimatedHours = ref(
   props.initialTicket?.estimatedHours != null ? String(props.initialTicket.estimatedHours) : ''
 )
+
+// MockAPI can return tags as a string[] or a plain string.
+// The input field always works with a comma-separated string for simplicity;
+// it's converted back to string[] in handleSubmit before emitting.
 const tagsInput = ref(
   Array.isArray(props.initialTicket?.tags)
     ? props.initialTicket.tags.join(', ')
@@ -55,6 +46,7 @@ const tagsInput = ref(
 
 const errors = ref<Record<string, string>>({})
 
+// Client-side validation — checks required fields before emitting the payload.
 function validate() {
   errors.value = {}
   if (!title.value.trim()) errors.value.title = 'Required'
@@ -73,7 +65,9 @@ function handleSubmit() {
     priority: priority.value,
     assignee: assignee.value.trim(),
     isArchived: isArchived.value,
+    // estimatedHours is stored as a string in the input; convert to number (or null if empty).
     estimatedHours: estimatedHours.value !== '' ? Number(estimatedHours.value) : null,
+    // Split the comma-separated string back into a clean string[].
     tags: tagsInput.value ? tagsInput.value.split(',').map(t => t.trim()).filter(Boolean) : [],
   }
   emit('submit', payload)

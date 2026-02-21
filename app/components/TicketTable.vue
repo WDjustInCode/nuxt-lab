@@ -30,7 +30,7 @@
           <td class="px-4 py-3">{{ ticket.status }}</td>
           <td class="px-4 py-3">{{ ticket.priority }}</td>
           <td class="px-4 py-3">{{ ticket.assignee }}</td>
-          <td class="px-4 py-3 text-gray-500">{{ formatDate(ticket.updatedAt) }}</td>
+          <td class="px-4 py-3 text-gray-500">{{ formatDate(ticket.updatedAt ?? '') }}</td>
         </tr>
       </tbody>
     </table>
@@ -38,16 +38,14 @@
 </template>
 
 <script setup lang="ts">
-interface Ticket {
-  id: string
-  ticketNumber: string
-  title: string
-  status: string
-  priority: string
-  assignee: string
-  updatedAt: string
-}
+// Read-only ticket table component — displays a summary list with no Edit/Delete actions.
+// Used when you only need to show data without CRUD controls.
+// Note: pages/tickets/index.vue builds its own inline table instead of using this component,
+// because it needs an extra "Actions" column (Edit/Delete buttons) per row.
 
+import type { Ticket } from '~/types/ticket'
+
+// Receives the ticket array from the parent; this component has no data-fetching of its own.
 defineProps<{ tickets: Ticket[] }>()
 
 const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

@@ -61,7 +61,8 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
   - `pages/tickets/[id].vue` - Ticket detail page (`/tickets/:id`) with Edit/Delete
   - `pages/realtime.vue` - Realtime page (`/realtime`)
   - `components/TicketTable.vue` - Read-only table (no action columns); used only if no actions needed
-  - `components/TicketForm.vue` - Create/edit form; exports `TicketUpsertPayload` type
+  - `components/TicketForm.vue` - Create/edit form
+  - `types/ticket.ts` - Shared `Ticket` and `TicketUpsertPayload` types
   - `components/ConfirmModal.vue` - Delete confirmation modal (Teleport-based)
   - `components/ToastHost.vue` - Toast renderer; exports `useToasts()` composable
 - `server/api/` - Nitro server routes (auto-registered, no imports needed)
@@ -77,14 +78,13 @@ Note: This project uses npm (package-lock.json is tracked). Don't use other pack
 - `.nuxt/` - Generated files (gitignored, created on dev/build)
 
 ### Ticket Type
-All pages and form components define a local `Ticket` interface inline (no shared types file yet). Full field set:
-- `id`, `ticketNumber`, `title`, `status`, `priority`, `assignee`, `updatedAt` (common)
-- `isArchived` (boolean), `estimatedHours` (number), `tags` (string[] | string), `description`, `createdAt` (detail/form)
+Both `Ticket` and `TicketUpsertPayload` are defined in `app/types/ticket.ts`. Import with:
+```ts
+import type { Ticket, TicketUpsertPayload } from '~/types/ticket'
+```
+`Ticket` fields: `id`, `ticketNumber`, `title`, `status`, `priority`, `assignee` (required); `description`, `isArchived`, `estimatedHours`, `tags`, `updatedAt`, `createdAt` (optional).
+`TicketUpsertPayload` fields: `ticketNumber`, `title`, `description`, `status`, `priority`, `assignee`, `isArchived`, `estimatedHours` (number | null), `tags` (string[]).
 - Dates from MockAPI are Unix timestamps (seconds); format with `new Date(Number(val) * 1000)`
-
-`TicketUpsertPayload` is exported from `components/TicketForm.vue`:
-- Fields: `ticketNumber`, `title`, `description`, `status`, `priority`, `assignee`, `isArchived`, `estimatedHours` (number | null), `tags` (string[])
-- Import with: `import type { TicketUpsertPayload } from '~/components/TicketForm.vue'`
 
 ### Toast System
 `useToasts()` is exported from `components/ToastHost.vue` (NOT from `composables/`). Import explicitly:

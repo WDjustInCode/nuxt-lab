@@ -49,7 +49,7 @@
             <td class="px-4 py-3 capitalize">{{ ticket.status }}</td>
             <td class="px-4 py-3 capitalize">{{ ticket.priority }}</td>
             <td class="px-4 py-3">{{ ticket.assignee || '—' }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ formatDate(ticket.updatedAt) }}</td>
+            <td class="px-4 py-3 text-gray-500">{{ formatDate(ticket.updatedAt ?? '') }}</td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2 justify-end">
                 <button
@@ -101,51 +101,55 @@
 </template>
 
 <script setup lang="ts">
-import { useToasts } from '~/components/ToastHost.vue'
-import type { TicketUpsertPayload } from '~/components/TicketForm.vue'
+// Route: /tickets — Lists all tickets and handles full CRUD (create, edit, delete) via modals.
+// Data flow: this page → /api/tickets (Nitro proxy in server/api/) → MockAPI
 
-interface Ticket {
-  id: string
-  ticketNumber: string
-  title: string
-  description: string
-  status: string
-  priority: string
-  assignee: string
-  isArchived: boolean
-  estimatedHours: number
-  tags: string[] | string
-  updatedAt: string
-}
+// useToasts must be imported explicitly from ToastHost.vue (not from composables/).
+// It returns a singleton shared across all components.
+import { useToasts } from '~/components/ToastHost.vue'
+
+import type { Ticket, TicketUpsertPayload } from '~/types/ticket'
 
 const toast = useToasts()
 
+// useFetch calls /api/tickets (our Nitro server route), NOT MockAPI directly.
+// pending, error, and refresh are reactive — the template reacts to each automatically.
 const { data: tickets, pending, error, refresh } = await useFetch<Ticket[]>('/api/tickets')
 
 const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
+// MockAPI returns dates as Unix timestamps (seconds since epoch).
+// Multiplying by 1000 converts to milliseconds, which Date() expects.
+// Falls back to parsing the raw string if it's not a numeric timestamp.
 function formatDate(value: string): string {
   const d = new Date(Number(value) ? Number(value) * 1000 : value)
   return isNaN(d.getTime()) ? value : fmt.format(d)
 }
 
-// Modal state
+// --- Modal state ---
+// showModal controls visibility of the create/edit form modal.
+// modalMode determines whether TicketForm renders in "create" or "edit" mode.
+// selectedTicket holds the ticket being edited; null means we're in create mode.
 const showModal = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
 const selectedTicket = ref<Ticket | null>(null)
 const isSubmitting = ref(false)
 
-// Delete state
+// --- Delete state ---
+// showConfirmDelete opens the ConfirmModal overlay.
+// ticketToDelete tracks which ticket the user intends to delete.
 const showConfirmDelete = ref(false)
 const ticketToDelete = ref<Ticket | null>(null)
 const isDeleting = ref(false)
 
+// Opens the form modal in create mode (no pre-filled data).
 function openCreateModal() {
   modalMode.value = 'create'
   selectedTicket.value = null
   showModal.value = true
 }
 
+// Opens the form modal in edit mode, pre-filling it with the selected ticket's data.
 function openEditModal(ticket: Ticket) {
   modalMode.value = 'edit'
   selectedTicket.value = ticket
@@ -157,6 +161,8 @@ function closeModal() {
   selectedTicket.value = null
 }
 
+// Called when TicketForm emits 'submit' with a validated payload.
+// The parent (this page) is responsible for the actual API call — the form only emits data.
 async function handleFormSubmit(payload: TicketUpsertPayload) {
   isSubmitting.value = true
   try {
@@ -168,6 +174,7 @@ async function handleFormSubmit(payload: TicketUpsertPayload) {
       toast.success('Ticket updated')
     }
     closeModal()
+    // Re-fetch the ticket list so the table reflects the latest server state.
     await refresh()
   } catch {
     toast.error(modalMode.value === 'create' ? 'Failed to create ticket' : 'Failed to update ticket')
@@ -181,6 +188,8 @@ function openDeleteConfirm(ticket: Ticket) {
   showConfirmDelete.value = true
 }
 
+// Called when ConfirmModal emits 'confirm'.
+// Sends DELETE to /api/tickets/:id (Nitro proxy), then re-fetches the list.
 async function handleDelete() {
   if (!ticketToDelete.value) return
   isDeleting.value = true

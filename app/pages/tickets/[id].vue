@@ -1,27 +1,22 @@
 <script setup lang="ts">
-import { useToasts } from '~/components/ToastHost.vue'
-import type { TicketUpsertPayload } from '~/components/TicketForm.vue'
+// Route: /tickets/:id — Displays a single ticket's full detail.
+// The [id] in the filename is a dynamic route segment — Nuxt maps it to route.params.id.
+// Data flow: this page → /api/tickets/:id (Nitro proxy) → MockAPI
 
-interface Ticket {
-  id: string
-  ticketNumber: string
-  title: string
-  status: string
-  priority: string
-  assignee: string
-  isArchived: boolean
-  estimatedHours: number
-  tags: string[] | string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
+import { useToasts } from '~/components/ToastHost.vue'
+import type { Ticket, TicketUpsertPayload } from '~/types/ticket'
 
 const route = useRoute()
 const router = useRouter()
+
+// Wrapping the param in computed() keeps it reactive.
+// If the route ever changes (e.g. navigating between detail pages), id.value updates
+// and useFetch below automatically re-runs the fetch.
 const id = computed(() => route.params.id as string)
 const toast = useToasts()
 
+// The arrow function () => `/api/tickets/${id.value}` makes the URL reactive.
+// Without it, useFetch would use a static string and ignore id changes.
 const { data: ticket, status, error, refresh } = await useFetch<Ticket>(
   () => `/api/tickets/${id.value}`
 )
@@ -39,11 +34,14 @@ const fmt = new Intl.DateTimeFormat('en-US', {
   timeStyle: 'short',
 })
 
+// MockAPI stores dates as Unix timestamps (seconds). Multiplying by 1000 converts to ms.
 function formatDate(val: string) {
   const d = new Date(Number(val) ? Number(val) * 1000 : val)
   return isNaN(d.getTime()) ? val : fmt.format(d)
 }
 
+// Called when TicketForm emits 'submit'. Sends PATCH to update the ticket,
+// then re-fetches to display the latest data from the server.
 async function handleFormSubmit(payload: TicketUpsertPayload) {
   isSubmitting.value = true
   try {
@@ -58,6 +56,8 @@ async function handleFormSubmit(payload: TicketUpsertPayload) {
   }
 }
 
+// After a successful delete, navigate back to the list page.
+// There's nothing to display on this detail page once the ticket is gone.
 async function handleDelete() {
   isDeleting.value = true
   try {
