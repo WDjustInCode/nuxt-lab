@@ -1,17 +1,23 @@
 <script setup lang="ts">
+// Generic confirmation dialog — used for destructive actions like deleting a ticket.
+// Used by: pages/tickets/index.vue and pages/tickets/[id].vue.
+// The parent controls open/close state and handles the actual delete logic on 'confirm'.
+
 withDefaults(defineProps<{
-  open: boolean
+  open: boolean       // Parent sets this to true to show the modal.
   title: string
   message: string
   confirmText?: string
   cancelText?: string
-  isBusy?: boolean
+  isBusy?: boolean    // Parent sets this while the delete API call is in flight; disables buttons.
 }>(), {
   confirmText: 'Delete',
   cancelText: 'Cancel',
   isBusy: false,
 })
 
+// 'confirm' — user clicked the destructive action button; parent should proceed with delete.
+// 'cancel' — user dismissed the dialog; parent should set open = false.
 const emit = defineEmits<{
   confirm: []
   cancel: []
@@ -19,7 +25,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <!-- Teleport moves this DOM node to <body>, outside the normal component tree.
+       This avoids z-index and CSS stacking context issues with parent elements. -->
   <Teleport to="body">
+    <!-- Clicking the semi-transparent overlay dismisses the modal. -->
     <div
       v-if="open"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"

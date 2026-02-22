@@ -1,3 +1,6 @@
+// Handles: PUT /api/tickets/:id
+// Full replacement of a ticket. Replaces the entire resource with the request body.
+// Currently not called by any page (PATCH is used for edits), but available for completeness.
 export default defineEventHandler(async (event) => {
   const { mockapiBaseUrl } = useRuntimeConfig(event)
 

@@ -1,3 +1,6 @@
+// Handles: DELETE /api/tickets/:id
+// Deletes a ticket from MockAPI.
+// After success, the list page calls refresh() and the detail page navigates to /tickets.
 export default defineEventHandler(async (event) => {
   const { mockapiBaseUrl } = useRuntimeConfig(event)
 
